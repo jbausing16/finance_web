@@ -83,7 +83,7 @@ function Admin() {
   const [addClient, setAddClient] = useState<client>(initialState);
   const [cli, setCli] = useState<client[]>([]);
 
-  const [currView, setCurrView] = useState(1);
+  // const [currView, setCurrView] = useState(1);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [page, setPage] = useState(1);
