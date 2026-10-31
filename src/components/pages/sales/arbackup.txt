@@ -1,0 +1,3707 @@
+import { useEffect, useState } from "react";
+import { SidebarInset, SidebarProvider } from "../../ui/sidebar";
+import { AppSidebar } from "../../reusables/sidebar/app-sidebar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ChevronLeft, ChevronRight, HandCoins, ListFilter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SearchForm } from "@/components/reusables/sidebar/search-form";
+import CustomDialog from "@/components/reusables/CustomDialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import Header from "@/components/reusables/Header";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import { formatMoney, hasAccess, round2 } from "@/lib/utils";
+import Wtax from "./Wtax";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import ViewEntry from "@/components/reusables/ViewEntry";
+import {
+  useAddARCMMutation,
+  useAddARInvoiceMutation,
+  useCancelARInvoiceMutation,
+  useGetAccountTypeHeadQuery,
+  useGetAccountTypeQuery,
+  useGetARDashboardQuery,
+  useGetAutoAccountQuery,
+  useGetAutoDocNoQuery,
+  useGetBPsQuery,
+  useGetCustomersQuery,
+  useGetInventoryItemsQuery,
+  useGetInvoicePreviewQuery,
+  useGetInvoicesQuery,
+  useGetWtaxRateQuery,
+} from "@/store/api/AdministrationApi";
+import { SelectWithSearch } from "@/components/ui/SelectWithSearch";
+import { toast } from "sonner";
+import YesNo from "@/components/reusables/YesNo";
+import AnimatedNumber from "@/components/reusables/AnimatedNumber";
+import PrintARInvoice from "@/components/reusables/PrintARInvoice";
+import {
+  useGetARAgingClientInvQuery,
+  useGetARAgingClientQuery,
+} from "@/store/api/ReportsApi";
+import CalendarSales from "./CalendarSales";
+import { SelectWithSearch1 } from "@/components/ui/SelectWithSearch1";
+import { formatDate1 } from "../financials/JournalEntry";
+import { Loading } from "@/components/reusables/Loading";
+import { Spinner } from "@/components/ui/spinner";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/store";
+import Empty from "@/components/reusables/Empty";
+import ARAgingAll from "./ARAgingAll";
+import CreditMemoModal from "./CreditMemoModal";
+
+export type wtax = {
+  id: number;
+  code: string;
+  name: string;
+  tax_amt: number;
+  wtax_amt: number;
+};
+
+export type customer = {
+  id: number;
+  code: string;
+  name: string;
+  terms: number;
+  wtax: number;
+  tax_stat: number;
+  c_person: string;
+};
+
+export type wtaxRate = {
+  id: number;
+  module: string;
+  type: string;
+  rate: number;
+  account: number;
+};
+
+export type idName = {
+  id: number;
+  name: string;
+};
+
+export type invoices = {
+  id: number;
+  no: string;
+  date: string;
+  due: string;
+  status: number;
+  po: string;
+  customer: string;
+  balance: number;
+  total: number;
+};
+
+type items = {
+  id: number;
+  code: string;
+  name: string;
+  vendor: number;
+  p_cost: string;
+  p_sales: string;
+  stock: number;
+  p_cogs: string;
+  p_income: string;
+  uom: string;
+  status: number;
+};
+
+type choices = {
+  id: number;
+  code: string;
+  type: number;
+  level: number;
+  name: string;
+  child: any[];
+};
+
+export const initialWtax = [
+  {
+    id: 1,
+    code: "7",
+    name: "",
+    tax_amt: 0,
+    wtax_amt: 0,
+  },
+  {
+    id: 2,
+    code: "0",
+    name: "",
+    tax_amt: 0,
+    wtax_amt: 0,
+  },
+  {
+    id: 3,
+    code: "0",
+    name: "",
+    tax_amt: 0,
+    wtax_amt: 0,
+  },
+  {
+    id: 4,
+    code: "0",
+    name: "",
+    tax_amt: 0,
+    wtax_amt: 0,
+  },
+  {
+    id: 5,
+    code: "0",
+    name: "",
+    tax_amt: 0,
+    wtax_amt: 0,
+  },
+];
+
+export const initialRows = [
+  {
+    id: 1,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 2,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 3,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 4,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 5,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 6,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 7,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 8,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 9,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+  {
+    id: 10,
+    description: "",
+    account: "",
+    customer: "",
+    vatable: "1",
+    wtax: "1",
+    discount: "",
+    amount: "",
+    product: "",
+    cogs: "",
+    income: "",
+    price: "",
+    qty: "",
+  },
+];
+
+export const initialData = {
+  id: 0,
+  cid: 0,
+  ccode: "",
+  cname: "",
+  cperson: "",
+  c_terms: 0,
+  c_wtax: 0,
+  c_tax_stat: 1,
+  po: "",
+  invoice: "",
+  post_date: new Date().toLocaleDateString("en-CA"),
+  due_date: "",
+  doc_date: new Date().toLocaleDateString("en-CA"),
+  receipt_date: new Date().toLocaleDateString("en-CA"),
+  remarks: "",
+  pricebefvat: 0,
+  discount: 0,
+  vat: 0,
+  wtax: 0,
+  total: 0,
+  appliedAmount: 0,
+  status: 0,
+  type: 1,
+  vatable: 1,
+  taxable: 1,
+};
+
+const ARStatus = [
+  {
+    id: 1,
+    name: "Open",
+    style: "p-1 px-2 rounded-2xl bg-blue-200 text-blue-900",
+  },
+  {
+    id: 2,
+    name: "Partially Paid",
+    style: "p-1 px-2 rounded-2xl bg-orange-200 text-orange-900",
+  },
+  {
+    id: 3,
+    name: "Closed",
+    style: "p-1 px-2 rounded-2xl bg-green-200 text-green-900",
+  },
+  {
+    id: 4,
+    name: "Canceled",
+    style: "p-1 px-2 rounded-2xl bg-red-200 text-red-900",
+  },
+  {
+    id: 5,
+    name: "For Verification",
+    style: "p-1 px-2 rounded-2xl bg-yellow-200 text-yellow-900",
+  },
+  {
+    id: 6,
+    name: "For Approval",
+    style: "p-1 px-2 rounded-2xl bg-purple-200 text-purple-900",
+  },
+  {
+    id: 7,
+    name: "Declined",
+    style: "p-1 px-2 rounded-2xl bg-red-300 text-red-900",
+  },
+];
+
+export const getStatus = (id: number) => {
+  return ARStatus.find((item) => id === item.id);
+};
+
+const hasIncompleteRows = (rows: any[]) => {
+  return rows.some(
+    (row) =>
+      (row.account === "" || row.customer === "") &&
+      Number(row.amount.replace(/,/g, "")) > 0,
+  );
+};
+
+const hasInvalidDiscount = (rows: any[]) => {
+  return rows.some((row) => {
+    const amount = Number(row.amount.replace(/,/g, ""));
+    const discount = Number(row.discount.replace(/,/g, ""));
+
+    // ignore empty or zero rows
+    if (!amount || !discount) return false;
+
+    const maxDiscount = row.vatable === "1" ? amount / 1.12 : amount;
+
+    return discount > maxDiscount;
+  });
+};
+
+function ARInvoice() {
+  const [invoices, setInvoices] = useState<invoices[]>([]);
+
+  const [customer, setCustomer] = useState<customer[]>([]);
+  const [accounts, setAccounts] = useState<choices[]>([]);
+  const [accountsAll, setAccountsAll] = useState<choices[]>([]);
+  const [incomeAcc, setIncomeAcc] = useState(0);
+
+  const [docType, setDocType] = useState(2);
+
+  const [search, setSearch] = useState("");
+  const [openAdd, setOpenAdd] = useState(false);
+  const [openAddC, setOpenAddC] = useState(false);
+  const [openCancel, setOpenCancel] = useState(false);
+  const [type, setType] = useState(1);
+
+  const [counter, setCounter] = useState(0);
+  const [counter1, setCounter1] = useState(0);
+
+  const [invoiceNo, setInvoiceNo] = useState(0);
+  const [invoiceNoC, setInvoiceNoC] = useState(0);
+  const [invoiceNoCM, setInvoiceNoCM] = useState(0);
+  const [viewInvoice, setViewInvoice] = useState(0);
+
+  const [openAgingClient, setOpenAgingClient] = useState(false);
+  const [openAgingInvoices, setOpenAgingInvoices] = useState(false);
+  const [activeClient, setActiveClient] = useState(0);
+  const [activeClientN, setActiveClientN] = useState("");
+
+  // const round2 = (num: number) => Math.round(num * 100) / 100;
+
+  const [dashboard, setDashboard] = useState({
+    income: 0,
+    overdue: 0,
+    open: 0,
+  });
+
+  const [totalWTax, setTotalWTax] = useState(0);
+
+  const [filtDate, setFiltDate] = useState(0);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [count, setCount] = useState(0);
+
+  const [currId, setCurrId] = useState(0);
+  const [openEntry, setOpenEntry] = useState(false);
+
+  const handlePreviousPage = () => {
+    setPage(page - 1);
+    setCurrentPage(page - 1);
+  };
+  const handleNextPage = () => {
+    setPage(page + 1);
+    setCurrentPage(page + 1);
+  };
+
+  const [data, setData] = useState(initialData);
+  const [rows, setRows] = useState(initialRows);
+  const [wtax, setWtax] = useState<wtax[]>(initialWtax);
+
+  const [data1, setData1] = useState(initialData);
+  const [rows1, setRows1] = useState(initialRows);
+  const [wtax1, setWtax1] = useState<wtax[]>(initialWtax);
+
+  const [taxLia, setTaxLia] = useState(false);
+  const [vatLia, setVatLia] = useState(false);
+
+  const [items, setItems] = useState<items[]>([]);
+  const [rowsI, setRowsI] = useState(initialRows);
+
+  const [oldRows, setOldRows] = useState(initialRows);
+
+  const [addLoading, setAddLoading] = useState(false);
+
+  const [search1, setSearch1] = useState("");
+  const [filter, setFilter] = useState({
+    type: 0,
+    date: 0,
+    from: "",
+    to: "",
+    status: 0,
+  });
+
+  const [filter1, setFilter1] = useState({
+    type: 0,
+    date: 0,
+    from: "",
+    to: "",
+    status: 0,
+  });
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setSearch1(search);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [search]);
+
+  const [cust, setCust] = useState([]);
+  const getCustomers = useGetCustomersQuery({});
+
+  useEffect(() => {
+    if (getCustomers.isSuccess && getCustomers.data) {
+      setCust(getCustomers?.data?.data);
+    }
+  }, [getCustomers.isSuccess, getCustomers.data]);
+
+  const addRow = () => {
+    setRows([
+      ...rows,
+      {
+        id: rows.length + 1,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+    ]);
+  };
+
+  const addRowI = () => {
+    setRowsI([
+      ...rowsI,
+      {
+        id: rowsI.length + 1,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+    ]);
+  };
+
+  const totalBefDiscountAmt =
+    docType === 2
+      ? rows.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+
+          // const value = String(row.vatable) === "1" ? amount / 1.12 : amount;
+
+          // const value =
+          //   String(row.vatable) === "1"
+          //     ? Math.round((amount / 1.12) * 100) / 100
+          //     : amount;
+
+          const value =
+            String(row.vatable) === "1"
+              ? round2(Number(amount / 1.12))
+              : amount;
+
+          return sum + round2(value);
+        }, 0)
+      : rowsI.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+
+          // const value = String(row.vatable) === "1" ? amount / 1.12 : amount;
+
+          const value =
+            String(row.vatable) === "1"
+              ? round2(Number(amount / 1.12))
+              : amount;
+
+          return sum + round2(value);
+        }, 0);
+
+  useEffect(() => {
+    console.log("RowsI", rowsI);
+  }, [rowsI]);
+
+  const discountAmt =
+    docType === 2
+      ? rows.reduce((sum, row) => {
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          return sum + round2(discount);
+        }, 0)
+      : rowsI.reduce((sum, row) => {
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          return sum + round2(discount);
+        }, 0);
+
+  const vatAmt =
+    docType === 2
+      ? rows.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          // const vat =
+          //   String(row.vatable) === "1"
+          //     ? round2(round2(amount / 1.12) - discount) * 0.12
+          //     : 0;
+
+          // const vat =
+          //   String(row.vatable) === "1"
+          //     ? Math.round((amount / 1.12 - discount) * 0.12 * 100) / 100
+          //     : 0;
+
+          // const vat =
+          //   String(row.vatable) === "1"
+          //     ? (round2(Number(amount / 1.12)) - discount) * 0.12
+          //     : 0;
+
+          const vat =
+            String(row.vatable) === "1"
+              ? Number(amount) - (round2(Number(amount / 1.12)) - discount)
+              : 0;
+
+          return sum + round2(vat);
+        }, 0)
+      : rowsI.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          // const vat =
+          //   String(row.vatable) === "1" ? (amount / 1.12 - discount) * 0.12 : 0;
+
+          // const vat =
+          //   String(row.vatable) === "1"
+          //     ? Math.round((amount / 1.12 - discount) * 0.12 * 100) / 100
+          //     : 0;
+
+          const vat =
+            String(row.vatable) === "1"
+              ? (round2(Number(amount / 1.12)) - discount) * 0.12
+              : 0;
+
+          return sum + round2(vat);
+        }, 0);
+
+  const taxableAmt =
+    docType === 2
+      ? rows.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          const taxable =
+            String(row.wtax) === "1"
+              ? String(row.vatable) === "1"
+                ? amount / 1.12 - discount
+                : amount - discount
+              : 0;
+
+          return sum + round2(taxable);
+        }, 0)
+      : rowsI.reduce((sum, row) => {
+          const amount =
+            parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+          const discount =
+            parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+          const taxable =
+            String(row.wtax) === "1"
+              ? String(row.vatable) === "1"
+                ? amount / 1.12 - discount
+                : amount - discount
+              : 0;
+
+          return sum + round2(taxable);
+        }, 0);
+
+  const taxableAmt1 = rows1.reduce((sum, row) => {
+    const amount = parseFloat(row.amount?.toString().replace(/,/g, "")) || 0;
+    const discount =
+      parseFloat(row.discount?.toString().replace(/,/g, "")) || 0;
+
+    return (
+      sum +
+      (String(row.wtax) === "1"
+        ? String(row.vatable) === "1"
+          ? amount / 1.12 - discount
+          : amount
+        : 0)
+    );
+  }, 0);
+
+  // const taxableAmt = rows.reduce(
+  //   (sum, row) =>
+  //     sum +
+  //     (row.wtax === "1"
+  //       ? (parseFloat(row.amount?.toString().replace(/,/g, "")) || 0) -
+  //         (parseFloat(row.discount?.toString().replace(/,/g, "")) || 0)
+  //       : 0),
+  //   0
+  // );
+
+  useEffect(() => {
+    if (data.c_wtax !== 0) {
+      // newRows[0].tax_amt = taxableAmt;
+      // newRows[0].wtax_amt = taxableAmt * (newRate?.rate || 0);
+      let newRate = wtaxOpt.find((item) => data.c_wtax === item.id);
+      setWtax((prev) => {
+        const newWtax = [...prev];
+        newWtax[0] = {
+          ...newWtax[0],
+          tax_amt: taxableAmt,
+          wtax_amt: taxableAmt * (newRate?.rate || 0),
+        };
+        return newWtax;
+      });
+    }
+  }, [taxableAmt]);
+
+  useEffect(() => {
+    if (data1.c_wtax !== 0) {
+      // newRows[0].tax_amt = taxableAmt;
+      // newRows[0].wtax_amt = taxableAmt * (newRate?.rate || 0);
+      let newRate = wtaxOpt.find((item) => data1.c_wtax === item.id);
+      setWtax1((prev) => {
+        const newWtax = [...prev];
+        newWtax[0] = {
+          ...newWtax[0],
+          tax_amt: taxableAmt,
+          wtax_amt: taxableAmt * (newRate?.rate || 0),
+        };
+        return newWtax;
+      });
+    }
+  }, [taxableAmt1]);
+
+  const wTaxAmt = wtax.reduce((sum, row) => sum + (row.wtax_amt || 0), 0);
+  const wTaxAmt1 = wtax1.reduce((sum, row) => sum + (row.wtax_amt || 0), 0);
+
+  const reset = () => {
+    setRows(initialRows);
+  };
+
+  const resetWtax = () => {
+    setWtax(initialWtax);
+  };
+
+  const resetData = () => {
+    setData(initialData);
+  };
+
+  const getDashboard = useGetARDashboardQuery({});
+  useEffect(() => {
+    if (getDashboard.isSuccess && getDashboard.data) {
+      setDashboard({
+        income: getDashboard?.data?.income,
+        overdue: getDashboard?.data?.overdue,
+        open: getDashboard?.data?.open,
+      });
+    }
+  }, [getDashboard.isSuccess, getDashboard.data]);
+
+  const getDocNum = useGetAutoDocNoQuery({
+    name: "A/R Invoice",
+    count: counter,
+  });
+  const getCancelDocNum = useGetAutoDocNoQuery(
+    { name: "A/R Invoice - Cancelation" },
+    { skip: type !== 3 },
+  );
+  const getARCMDocNum = useGetAutoDocNoQuery(
+    { name: "A/R Credit Memo" },
+    { skip: type !== 4 },
+  );
+  const getBPs = useGetBPsQuery({ type: 1 });
+
+  const getAutoAccount = useGetAutoAccountQuery({ type: "Income Account	" });
+
+  const getInvPrev = useGetInvoicePreviewQuery(
+    { id: viewInvoice, count: counter },
+    {
+      skip: viewInvoice === 0,
+    },
+  );
+
+  const getInvoices = useGetInvoicesQuery(
+    {
+      page: page,
+      type: filter1.type,
+      date: filter1.date,
+      from: filter1.from,
+      to: filter1.to,
+      status: filter1.status,
+      search: search1,
+      mod: "1",
+    },
+    { refetchOnMountOrArgChange: true },
+  );
+
+  const getAgingClient = useGetARAgingClientQuery(
+    { counter: counter1 },
+    { refetchOnMountOrArgChange: true },
+  );
+  const getAgingInvoices = useGetARAgingClientInvQuery(
+    { cid: activeClient, counter: counter1 },
+    { skip: activeClient === 0, refetchOnMountOrArgChange: true },
+  );
+
+  useEffect(() => {
+    console.log("Counter here: ", counter);
+  }, [counter]);
+
+  useEffect(() => {
+    if (getDocNum.isSuccess && getDocNum.data) {
+      setInvoiceNo(getDocNum.data.no);
+      console.log("count: ", counter);
+    }
+  }, [getDocNum.isSuccess, getDocNum.data]);
+  useEffect(() => {
+    if (getCancelDocNum.isSuccess && getCancelDocNum.data) {
+      setInvoiceNoC(getCancelDocNum.data.no);
+    }
+  }, [getCancelDocNum.isSuccess, getCancelDocNum.data]);
+  useEffect(() => {
+    if (getARCMDocNum.isSuccess && getARCMDocNum.data) {
+      setInvoiceNoCM(getARCMDocNum.data.no);
+    }
+  }, [getARCMDocNum.isSuccess, getARCMDocNum.data]);
+  useEffect(() => {
+    if (getBPs.isSuccess && getBPs.data) {
+      setCustomer(getBPs.data.data);
+    }
+  }, [getBPs.isSuccess, getBPs.data]);
+
+  const getAccounts = useGetAccountTypeHeadQuery({ type: 4 });
+  useEffect(() => {
+    if (getAccounts.isSuccess && getAccounts.data) {
+      setAccounts(getAccounts.data.data);
+    }
+  }, [getAccounts.isSuccess, getAccounts.data]);
+
+  const getAccountsAll = useGetAccountTypeQuery({ type: 4 });
+  useEffect(() => {
+    if (getAccountsAll.isSuccess && getAccountsAll.data) {
+      setAccountsAll(getAccountsAll.data.data);
+    }
+  }, [getAccountsAll.isSuccess, getAccountsAll.data]);
+
+  useEffect(() => {
+    if (getAutoAccount.isSuccess && getAutoAccount.data) {
+      setIncomeAcc(getAutoAccount.data.data.account);
+    }
+  }, [getAutoAccount.isSuccess, getAutoAccount.data]);
+
+  useEffect(() => {
+    if (getInvoices.isSuccess && getInvoices.data) {
+      setInvoices(getInvoices.data.results);
+      setTotalPages(Math.ceil(getInvoices?.data?.count / 10));
+      setCount(getInvoices.data.count);
+    }
+  }, [getInvoices.isSuccess, getInvoices.data]);
+
+  useEffect(() => {
+    if (getInvPrev.isSuccess && getInvPrev.data) {
+      clearAll(0);
+      const rows = getInvPrev.data.data.rows;
+
+      // Ensure at least 10 rows
+      const minimumRows = 10;
+      const filledRows = [...rows]; // Start with the rows from the API
+
+      // If there are fewer than 10 rows, fill the remaining spots with empty rows
+      while (filledRows.length < minimumRows) {
+        filledRows.push({
+          id: filledRows.length + 1, // Ensure unique id
+          description: "",
+          price: "0",
+          account: "",
+          customer: "",
+          vatable: "0",
+          wtax: "0",
+          discount: "",
+          amount: "",
+        });
+      }
+
+      const wtax = getInvPrev.data.data.wtax1;
+
+      const minimumWTax = 5;
+      const filledTax = [...wtax];
+
+      while (filledTax.length < minimumWTax) {
+        filledTax.push({
+          id: filledTax.length + 1,
+          code: "0",
+          name: "",
+          tax_amt: 0,
+          wtax_amt: 0,
+        });
+      }
+
+      setDocType(getInvPrev.data.data.type);
+      setData1(getInvPrev.data.data);
+      setTimeout(() => {
+        setRows1(filledRows);
+        setRowsI(filledRows);
+        setOldRows(filledRows);
+      }, 100);
+
+      setWtax1(filledTax);
+      setWtax(filledTax);
+    }
+  }, [getInvPrev.isSuccess, getInvPrev.data]);
+
+  const [wtaxOpt, setWtaxOpt] = useState<wtaxRate[]>([]);
+
+  const getWtax = useGetWtaxRateQuery({});
+  useEffect(() => {
+    if (getWtax.isSuccess && getWtax.data) {
+      setWtaxOpt(getWtax.data.data);
+    }
+  }, [getWtax.isSuccess, getWtax.data]);
+
+  const getItems = useGetInventoryItemsQuery({});
+  useEffect(() => {
+    if (getItems.isSuccess && getItems.data) {
+      setItems(getItems.data.data);
+    }
+  }, [getItems.isSuccess, getItems.data]);
+
+  const [addInvoice] = useAddARInvoiceMutation();
+  const [cancelInvoice] = useCancelARInvoiceMutation();
+  const [addARCM] = useAddARCMMutation();
+  const submitInvoice = async () => {
+    try {
+      const activeRows = type === 1 ? rows : rows1;
+      console.log("Hoorau");
+
+      const formData = new FormData();
+      formData.append("docType", String(docType));
+      formData.append("tbda", String(totalBefDiscountAmt));
+      formData.append("discount", String(discountAmt));
+      formData.append("vatAmt", String(vatAmt));
+      if (type === 4) {
+        formData.append("wtaxAmt", String(wTaxAmt1));
+      } else {
+        formData.append("wtaxAmt", String(wTaxAmt));
+      }
+
+      formData.append(
+        "total",
+        String(totalBefDiscountAmt - discountAmt + vatAmt),
+      );
+      // if (type === 1) {
+      // } else {
+      // }
+
+      formData.append("currId", String(currId));
+
+      let checkstat: any;
+      // if(docType === 1){
+
+      // }else{
+
+      // }
+      if (type === 1) {
+        console.log("Hoorau 1");
+        if (hasIncompleteRows(activeRows)) {
+          toast.error(
+            "Please select an account & customer for entered amounts.",
+          );
+          console.log("Got in first return");
+          setAddLoading(false);
+          return;
+        }
+
+        if (hasInvalidDiscount(activeRows)) {
+          toast.error("Discount cannot be greater than the allowed amount.");
+          console.log("Got in second return");
+          setAddLoading(false);
+          return;
+        }
+        formData.append("datas", JSON.stringify(data));
+        if (docType === 2) {
+          formData.append("rows", JSON.stringify(rows));
+        } else {
+          formData.append("rows", JSON.stringify(rowsI));
+        }
+
+        formData.append("wtax", JSON.stringify(wtax));
+
+        if (data.ccode !== "" && data.cname !== "") {
+          if (totalBefDiscountAmt + vatAmt > 0) {
+            checkstat = await addInvoice(formData).unwrap();
+          } else {
+            toast.error("Document total should be greater than zero.");
+            setAddLoading(false);
+            return;
+          }
+        } else {
+          toast.error("Please fill out required fields.");
+          setAddLoading(false);
+          return;
+        }
+      } else if (type === 3) {
+        console.log("Hoorau 3");
+        formData.append("datas", JSON.stringify(data1));
+        checkstat = await cancelInvoice(formData).unwrap();
+      } else if (type === 4) {
+        console.log("Hoorau 4");
+        if (hasIncompleteRows(activeRows)) {
+          toast.error(
+            "Please select an account & customer for entered amounts.",
+          );
+          console.log("Got in first return");
+          setAddLoading(false);
+          return;
+        }
+
+        if (hasInvalidDiscount(activeRows)) {
+          toast.error("Discount cannot be greater than the allowed amount.");
+          console.log("Got in second return");
+          setAddLoading(false);
+          return;
+        }
+
+        formData.append("datas", JSON.stringify(data1));
+        formData.append("rows", JSON.stringify(rows1));
+        formData.append("wtax", JSON.stringify(wtax1));
+        if (
+          totalBefDiscountAmt + vatAmt !== 0 &&
+          data1.ccode !== "" &&
+          data1.cname !== ""
+        ) {
+          checkstat = await addARCM(formData).unwrap();
+        } else {
+          toast.error("Document total cannot be equal to zero.");
+          setAddLoading(false);
+          return;
+        }
+      } else {
+      }
+
+      if (checkstat.success) {
+        setOpenAdd(false);
+        setOpenCancel(false);
+        setAddLoading(false);
+        clearAll(0);
+        toast.success(checkstat.message);
+      } else {
+        toast.error(checkstat.message);
+        setAddLoading(false);
+        return;
+      }
+    } catch (error: any) {
+      const message =
+        error?.data?.message || error?.data?.detail || "Something went wrong";
+      setAddLoading(false);
+      toast.error(message);
+    }
+  };
+
+  const clearAll = (e: number) => {
+    resetWtax();
+    if (e === 0) {
+      setData(initialData);
+    }
+
+    setRows((prevRows) =>
+      prevRows.map((row, i) => ({
+        ...row,
+        id: i + 1,
+        description: "",
+        account: "",
+        customer: "",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      })),
+    );
+
+    setRowsI((prevRows) =>
+      prevRows.map((row, i) => ({
+        ...row,
+        id: i + 1,
+        description: "",
+        account: "",
+        customer: "",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      })),
+    );
+
+    setRows1([
+      {
+        id: 1,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 2,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 3,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 4,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 5,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 6,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 7,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 8,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 9,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+      {
+        id: 10,
+        description: "",
+        account: "",
+        customer: "",
+        vatable: "1",
+        wtax: "1",
+        discount: "",
+        amount: "",
+        product: "",
+        cogs: "",
+        income: "",
+        price: "",
+        qty: "",
+      },
+    ]);
+
+    // console.log("Rows", rows);
+    // console.log("Rows1", rows1);
+    // console.log("RowsI", rowsI);
+  };
+  useEffect(() => {
+    if (type !== 2 && type !== 4) {
+      clearAll(0);
+    }
+  }, [type]);
+
+  const cleared = oldRows.map((row) => ({
+    ...row,
+    amount: "",
+    discount: "",
+  }));
+
+  const access = useSelector((state: RootState) => state.auth.access);
+  if (!access || access.length === 0) {
+    return <Loading />;
+  }
+  return (
+    <>
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <Header title={`A/R Invoice`} />
+          {!hasAccess(access, "18", "view") ? (
+            <Empty />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 px-10">
+                <div className="grid bg-purple-100 p-4 rounded-md gap-2">
+                  <span className="text-xs md:text-sm  font-medium">
+                    Total Sales
+                  </span>
+                  <span className="text-lg lg:text-xl xl:text-3xl font-medium flex gap-2">
+                    PHP <AnimatedNumber value={dashboard.income} />
+                  </span>
+                </div>
+                <div
+                  className="grid bg-blue-100 p-4 rounded-md gap-2 cursor-pointer"
+                  onClick={() => {
+                    setOpenAgingClient(true);
+                    setCounter1((prev) => prev + 1);
+                  }}
+                >
+                  <span className="text-xs md:text-sm  font-medium">
+                    Overdue Invoices
+                  </span>
+                  <span className="text-lg lg:text-xl xl:text-3xl font-medium flex gap-2">
+                    PHP <AnimatedNumber value={dashboard.overdue} />
+                  </span>
+                </div>
+                <div className="grid bg-orange-100 p-4 rounded-md gap-2">
+                  <span className="text-xs md:text-sm  font-medium">
+                    Open Invoices
+                  </span>
+                  <span className="text-lg lg:text-xl xl:text-3xl font-medium flex gap-2">
+                    PHP <AnimatedNumber value={dashboard.open} />
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-1 flex-col gap-4 p-4 px-10 ">
+                <div
+                  className="flex justify-between
+            "
+                >
+                  <div className="flex gap-2">
+                    <SearchForm
+                      search={search}
+                      setSearch={setSearch}
+                      placeholder="Name / Invoice"
+                      className="max-w-80"
+                    />
+
+                    <Sheet>
+                      <SheetTrigger className=" bg-[#F3F4F6] text-gray-600 hover:bg-[#f3f7ff] hover:text-gray-700 flex gap-2  items-center rounded-md px-4 cursor-pointer border">
+                        <ListFilter size={18} />
+                        <span className="font-medium">Filter</span>
+                      </SheetTrigger>
+                      <SheetContent>
+                        <SheetHeader>
+                          <SheetTitle className="py-4">
+                            <div className="flex justify-between items-center">
+                              <div>Filter options</div>
+                              <div className="flex gap-6">
+                                <Button
+                                  size="icon"
+                                  variant="link"
+                                  className="text-blue-700 cursor-pointer"
+                                  onClick={() => {
+                                    setFilter({
+                                      type: 0,
+                                      date: 0,
+                                      from: "",
+                                      to: "",
+                                      status: 0,
+                                    });
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              </div>
+                            </div>
+                          </SheetTitle>
+                          <SheetDescription>
+                            <div className="grid flex-1 auto-rows-min gap-6 px-4">
+                              <div className="grid w-full items-center gap-2">
+                                <Label className=" gap-0">Customer</Label>
+
+                                <Select
+                                  onValueChange={(e) =>
+                                    setFilter({ ...filter, type: Number(e) })
+                                  }
+                                  value={String(filter.type)}
+                                >
+                                  <SelectTrigger className="w-full ">
+                                    <SelectValue placeholder="All" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">All</SelectItem>
+                                    {cust.map((item: any, i: number) => (
+                                      <SelectItem
+                                        value={String(item.id)}
+                                        key={i}
+                                      >
+                                        {item.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <div className="grid w-full items-center gap-2">
+                                <Label className=" gap-0">Date</Label>
+
+                                <Select
+                                  onValueChange={(e) => {
+                                    const today = new Date();
+                                    const year = today.getFullYear();
+                                    const month = today.getMonth();
+
+                                    if (e === "1") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(year, month - 12, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(year, month, 0),
+                                        ),
+                                      });
+                                    } else if (e === "2") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(year, month - 6, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(year, month, 0),
+                                        ),
+                                      });
+                                    } else if (e === "3") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(year, month - 2, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(year, month, 0),
+                                        ),
+                                      });
+                                    } else if (e === "4") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(year, month - 1, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(year, month, 0),
+                                        ),
+                                      });
+                                    } else if (e === "5") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(year, month, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(year, month + 1, 0),
+                                        ),
+                                      });
+                                    } else if (e === "6") {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                        from: formatDate1(
+                                          new Date(today.getFullYear(), 0, 1),
+                                        ),
+                                        to: formatDate1(
+                                          new Date(today.getFullYear(), 11, 31),
+                                        ),
+                                      });
+                                    } else {
+                                      setFilter({
+                                        ...filter,
+                                        date: parseInt(e),
+                                      });
+                                    }
+                                  }}
+                                  value={String(filter.date)}
+                                >
+                                  <SelectTrigger className="w-full ">
+                                    <SelectValue placeholder="All" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">All</SelectItem>
+                                    <SelectItem value="1">
+                                      Last 12 Months
+                                    </SelectItem>
+                                    <SelectItem value="2">
+                                      Last 6 Months
+                                    </SelectItem>
+                                    <SelectItem value="3">
+                                      Last 2 Months
+                                    </SelectItem>
+                                    <SelectItem value="4">
+                                      Last Month
+                                    </SelectItem>
+                                    <SelectItem value="5">
+                                      Current Month
+                                    </SelectItem>
+                                    <SelectItem value="6">
+                                      Specific Date
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {filter.date === 6 && (
+                                <>
+                                  <div className="grid w-full items-center gap-2">
+                                    <Label className=" gap-0">From</Label>
+                                    <Input
+                                      type="date"
+                                      placeholder="From"
+                                      className={`w-full`}
+                                      onChange={(e) =>
+                                        setFilter({
+                                          ...filter,
+                                          from: e.target.value,
+                                        })
+                                      }
+                                      value={filter.from}
+                                    />
+                                  </div>
+
+                                  <div className="grid w-full items-center gap-2">
+                                    <Label className=" gap-0">To</Label>
+                                    <Input
+                                      type="date"
+                                      placeholder="To"
+                                      className={`w-full`}
+                                      onChange={(e) =>
+                                        setFilter({
+                                          ...filter,
+                                          to: e.target.value,
+                                        })
+                                      }
+                                      value={filter.to}
+                                    />
+                                  </div>
+                                </>
+                              )}
+
+                              <div className="grid w-full items-center gap-2">
+                                <Label className=" gap-0">Status</Label>
+
+                                <Select
+                                  onValueChange={(e) =>
+                                    setFilter({ ...filter, status: Number(e) })
+                                  }
+                                  value={String(filter.status)}
+                                >
+                                  <SelectTrigger className="w-full ">
+                                    <SelectValue placeholder="All" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="0">All</SelectItem>
+                                    <SelectItem value="1">Open</SelectItem>
+                                    <SelectItem value="2">
+                                      Partially Paid
+                                    </SelectItem>
+                                    <SelectItem value="3">Closed</SelectItem>
+                                    <SelectItem value="4">Canceled</SelectItem>
+                                    <SelectItem value="5">
+                                      For Verification
+                                    </SelectItem>
+                                    <SelectItem value="6">
+                                      For Approval
+                                    </SelectItem>
+                                    <SelectItem value="7">Declined</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          </SheetDescription>
+                        </SheetHeader>
+
+                        <SheetFooter>
+                          <SheetClose asChild>
+                            <Button
+                              className="shadow-md bg-gray-500 text-gray-100 hover:bg-gray-600 hover:text-gray-200 rounded-lg p-2 cursor-pointer"
+                              onClick={() => {
+                                setPage(1);
+                                setCurrentPage(1);
+                                setFilter1({
+                                  type: filter.type,
+                                  date: filter.date,
+                                  from: filter.from,
+                                  to: filter.to,
+                                  status: filter.status,
+                                });
+                              }}
+                            >
+                              Filter
+                            </Button>
+                          </SheetClose>
+                          <SheetClose asChild>
+                            <Button variant="outline">Close</Button>
+                          </SheetClose>
+                        </SheetFooter>
+                      </SheetContent>
+                    </Sheet>
+
+                    <CalendarSales />
+                  </div>
+
+                  <div>
+                    {hasAccess(access, "18", "create") && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          setCounter((prev) => prev + 1);
+                          setDocType(2);
+
+                          // setTimeout(() => {
+                          //   resetWtax();
+                          setType(1);
+                          clearAll(0);
+
+                          //   setData(initialData);
+                          //   setRows(initialRows);
+                          //   setRowsI(initialRows);
+                          //   setRows1(initialRows);
+                          //   // resetData();
+                          // }, 500);
+
+                          //reset();
+
+                          setOpenAdd(true);
+                          getDocNum.refetch();
+                        }}
+                      >
+                        Add Invoice
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <Table className="shadow-sm border">
+                  <TableHeader className="bg-gray-200 dark:bg-gray-800 rounded-b-sm select-none">
+                    <TableRow className="">
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold py-3 ">
+                        Invoice No.
+                      </TableHead>
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold py-3">
+                        Invoice Date
+                      </TableHead>
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold cursor-pointer py-3">
+                        Due Date
+                      </TableHead>
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold cursor-pointer py-3">
+                        Status
+                      </TableHead>
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold py-3">
+                        PO No.
+                      </TableHead>
+                      <TableHead className="font-archivo text-center text-muted-foreground font-semibold py-3">
+                        Customer
+                      </TableHead>
+                      <TableHead className="font-archivo text-right text-muted-foreground font-semibold py-3">
+                        Balance
+                      </TableHead>
+                      <TableHead className="font-archivo text-right text-muted-foreground font-semibold py-3">
+                        Total Amount
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody className="font-inter text-foreground">
+                    {invoices.map((item, idx) => (
+                      <ContextMenu key={idx}>
+                        <ContextMenuTrigger asChild>
+                          <TableRow
+                            className={`cursor-pointer ${
+                              currId === item.id ? `bg-gray-100` : ``
+                            }`}
+                            onClick={() => setCurrId(item.id)}
+                            onContextMenu={() => setCurrId(item.id)}
+                          >
+                            <TableCell
+                              className="py-2 text-center "
+                              onClick={() => {
+                                setType(2);
+                                setOpenAdd(false);
+                                setCounter((prev) => prev + 1);
+                                // setViewInvoice(item.id);
+                                setTimeout(() => {
+                                  // allow state to update
+                                  setViewInvoice(item.id);
+                                  setOpenAdd(true);
+                                }, 50);
+                              }}
+                            >
+                              <span className="text-blue-800 underline cursor-pointer font-medium">
+                                {item.no}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {item.date}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {item.due}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              <span className={getStatus(item.status)?.style}>
+                                {getStatus(item.status)?.name}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {item.po}
+                            </TableCell>
+                            <TableCell className="py-2 text-center">
+                              {item.customer}
+                            </TableCell>
+                            <TableCell className="py-2 text-right">
+                              {formatMoney(item.balance)}
+                            </TableCell>
+                            <TableCell className="py-2 text-right flex justify-end gap-3">
+                              {formatMoney(item.total)}{" "}
+                              <PrintARInvoice
+                                id={item.id}
+                                status={item.status}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        </ContextMenuTrigger>
+
+                        {/* Context Menu Items */}
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            onClick={() => setOpenEntry(true)}
+                            disabled={item.status === 5 || item.status === 6}
+                          >
+                            Journal Entry
+                          </ContextMenuItem>
+                          {hasAccess(access, "18", "edit") && (
+                            <ContextMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setOpenCancel(true);
+                                setViewInvoice(0);
+                                setCounter((prev) => prev + 1);
+                              }}
+                              disabled={item.status !== 1}
+                            >
+                              Cancel
+                            </ContextMenuItem>
+                          )}
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))}
+                  </TableBody>
+                </Table>
+
+                <div className="flex items-center space-x-2 justify-end">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {count === 0 ? 0 : (currentPage - 1) * pageSize + 1}{" "}
+                    - {Math.min(currentPage * pageSize, count)} of {count}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePreviousPage}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="sr-only">Previous page</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Next page</span>
+                  </Button>
+                </div>
+              </div>{" "}
+            </>
+          )}
+        </SidebarInset>
+      </SidebarProvider>
+
+      {openAdd && (
+        <CustomDialog
+          close={setOpenAdd}
+          title={
+            type === 1
+              ? `Add A/R Invoice`
+              : type === 2
+                ? `View A/R Invoice`
+                : type === 3
+                  ? `Cancel A/R Invoice`
+                  : `A/R Credit Memo`
+          }
+          width={`!w-[65vw]`}
+          height={``}
+          closeIcon={`N`}
+          button=""
+          escape="N"
+        >
+          <ContextMenu key={1001}>
+            <ContextMenuTrigger asChild>
+              <div className="grid grid-cols-1 gap-1 pt-4 ">
+                <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-3">
+                    <div className=" border-b ">
+                      <span className="text-sm">Customer Code</span>
+                    </div>
+                    <div className="grid col-span-2">
+                      {/* <Input noPadding className="w-2/3" type="text" /> */}
+                      <SelectWithSearch
+                        options={customer.map((item) => ({
+                          label: String(item.id),
+                          value: item.code,
+                        }))}
+                        placeholder="Customer Code"
+                        onChange={(c) => {
+                          let cust = customer.find(
+                            (item) => Number(c) === item.id,
+                          );
+                          let newDate = "";
+                          // const invoiceDate = new Date();
+                          const invoiceDate = new Date(data.receipt_date);
+                          if (cust?.terms && cust.terms !== 0) {
+                            const result = new Date(invoiceDate);
+                            result.setDate(result.getDate() + cust.terms);
+
+                            newDate = result.toLocaleDateString("en-CA");
+                          } else {
+                            newDate = invoiceDate.toLocaleDateString("en-CA");
+                          }
+                          if (cust) {
+                            if (cust?.tax_stat === 1) {
+                              setVatLia(true);
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "1",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "1",
+                                })),
+                              );
+                            } else {
+                              setVatLia(false);
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "2",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "2",
+                                })),
+                              );
+                            }
+                            if (cust?.wtax === 0) {
+                              setTaxLia(false);
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "2",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "2",
+                                })),
+                              );
+                              setWtax((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  code: "0",
+                                  name: "",
+                                  tax_amt: 0,
+                                  wtax_amt: 0,
+                                })),
+                              );
+                            } else {
+                              setTaxLia(true);
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "1",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "1",
+                                })),
+                              );
+                              let newRate = wtaxOpt.find(
+                                (item) => cust?.wtax === item.id,
+                              );
+                              const newRows = [...wtax];
+                              newRows[0].code = String(newRate?.id || 0);
+                              newRows[0].name = newRate?.type || "";
+                              newRows[0].tax_amt = taxableAmt;
+                              newRows[0].wtax_amt =
+                                taxableAmt * (newRate?.rate || 0);
+                              setWtax(newRows);
+                            }
+                            setData({
+                              ...data,
+                              cid: cust?.id,
+                              ccode: cust?.code,
+                              cname: cust?.name,
+                              cperson: cust?.c_person,
+                              c_terms: cust?.terms,
+                              c_wtax: cust?.wtax,
+                              c_tax_stat: cust?.tax_stat,
+                              due_date: newDate,
+                            });
+                          }
+                        }}
+                        noPadding
+                        className="w-2/3"
+                        value={type === 1 ? data.ccode : data1.ccode}
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-5">
+                    <div></div>
+                    <div className=" border-b col-span-2">
+                      <span className="text-sm">Invoice No.</span>
+                    </div>
+                    <div className="grid col-span-2 justify-items-end">
+                      <Input
+                        noPadding
+                        className="w-full "
+                        type="text"
+                        onChange={(e) => {
+                          setInvoiceNo(Number(e.target.value));
+                          setInvoiceNoCM(Number(e.target.value));
+                          setData({ ...data, invoice: e.target.value });
+                        }}
+                        value={
+                          type === 1
+                            ? invoiceNo
+                            : type === 3
+                              ? invoiceNoC
+                              : type === 4
+                                ? invoiceNoCM
+                                : data1.invoice
+                        }
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-3 ">
+                    <div className=" border-b ">
+                      <span className="text-sm">Customer Name</span>
+                    </div>
+                    <div className="grid col-span-2">
+                      <SelectWithSearch
+                        options={customer.map((item) => ({
+                          label: String(item.id),
+                          value: item.name,
+                        }))}
+                        placeholder="Customer Name"
+                        onChange={(c) => {
+                          let cust = customer.find(
+                            (item) => Number(c) === item.id,
+                          );
+                          let newDate = "";
+                          // const invoiceDate = new Date();
+                          const invoiceDate = new Date(data.receipt_date);
+                          if (cust?.terms && cust.terms !== 0) {
+                            const result = new Date(invoiceDate);
+                            result.setDate(result.getDate() + cust.terms);
+
+                            newDate = result.toLocaleDateString("en-CA");
+                          } else {
+                            newDate = invoiceDate.toLocaleDateString("en-CA");
+                          }
+                          if (cust) {
+                            if (cust?.tax_stat === 1) {
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "1",
+                                })),
+                              );
+
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "1",
+                                })),
+                              );
+                            } else {
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "2",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  vatable: "2",
+                                })),
+                              );
+                            }
+                            if (cust?.wtax === 0) {
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "2",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "2",
+                                })),
+                              );
+                              setWtax((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  code: "0",
+                                  name: "",
+                                  tax_amt: 0,
+                                  wtax_amt: 0,
+                                })),
+                              );
+                            } else {
+                              setRows((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "1",
+                                })),
+                              );
+                              setRowsI((prevRows) =>
+                                prevRows.map((row) => ({
+                                  ...row,
+                                  wtax: "1",
+                                })),
+                              );
+                              let newRate = wtaxOpt.find(
+                                (item) => cust?.wtax === item.id,
+                              );
+                              const newRows = [...wtax];
+                              newRows[0].code = String(newRate?.id || 0);
+                              newRows[0].name = newRate?.type || "";
+                              newRows[0].tax_amt = taxableAmt;
+                              newRows[0].wtax_amt =
+                                taxableAmt * (newRate?.rate || 0);
+                              setWtax(newRows);
+                            }
+                            setData({
+                              ...data,
+                              cid: cust?.id,
+                              ccode: cust?.code,
+                              cname: cust?.name,
+                              cperson: cust?.c_person,
+                              c_terms: cust?.terms,
+                              c_wtax: cust?.wtax,
+                              c_tax_stat: cust?.tax_stat,
+                              due_date: newDate,
+                            });
+                          }
+                        }}
+                        noPadding
+                        className="w-2/3"
+                        value={type === 1 ? data.cname : data1.cname}
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-5">
+                    <div></div>
+                    <div className=" border-b col-span-2">
+                      <span className="text-sm">Posting Date</span>
+                    </div>
+                    <div className="grid col-span-2 justify-items-end">
+                      <Input
+                        noPadding
+                        className="w-full"
+                        type="date"
+                        onChange={(e) => {
+                          setData({ ...data, post_date: e.target.value });
+                          setData1({ ...data1, post_date: e.target.value });
+                        }}
+                        value={
+                          type === 1 || type === 4
+                            ? data.post_date
+                            : data1.post_date
+                        }
+                        readOnly={type === 2}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-3">
+                    <div className=" border-b ">
+                      <span className="text-sm">Contact Person</span>
+                    </div>
+                    <div className="grid col-span-2">
+                      <Input
+                        noPadding
+                        className="w-2/3"
+                        type="text"
+                        value={type === 1 ? data.cperson : data1.cperson}
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-5">
+                    <div></div>
+                    <div className=" border-b col-span-2">
+                      <span className="text-sm">Due Date</span>
+                    </div>
+                    <div className="grid col-span-2 justify-items-end">
+                      <Input
+                        noPadding
+                        className="w-full"
+                        type="date"
+                        onChange={(e) =>
+                          setData({ ...data, due_date: e.target.value })
+                        }
+                        value={type === 1 ? data.due_date : data1.due_date}
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2">
+                  <div className="grid grid-cols-3">
+                    <div className=" border-b ">
+                      <span className="text-sm">PO No.</span>
+                    </div>
+                    <div className="grid col-span-2">
+                      <Input
+                        noPadding
+                        className="w-2/3"
+                        type="text"
+                        onChange={(e) =>
+                          setData({ ...data, po: e.target.value })
+                        }
+                        value={type === 1 ? data.po : data1.po}
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-5">
+                    <div></div>
+                    <div className=" border-b col-span-2">
+                      <span className="text-sm">Document Date</span>
+                    </div>
+                    <div className="grid col-span-2 justify-items-end">
+                      <Input
+                        noPadding
+                        className="w-full"
+                        type="date"
+                        disabled
+                        value={
+                          type === 1
+                            ? new Date().toLocaleDateString("en-CA")
+                            : data1.doc_date
+                        }
+                        readOnly={type !== 1}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 pb-4">
+                  <div className="grid grid-cols-3">
+                    <div className=" border-b ">
+                      <span className="text-sm">Document Type</span>
+                    </div>
+                    <div className="grid col-span-2">
+                      <Select
+                        value={String(docType)}
+                        onValueChange={(e) => {
+                          setDocType(Number(e));
+                          // setRows(initialRows);
+                          // setRowsI(initialRows);
+                          // setRows1(initialRows);
+                          clearAll(1);
+                        }}
+                        disabled={type !== 1}
+                      >
+                        <SelectTrigger className="w-2/3 !p-0 !m-0 !h-auto !min-h-0 !leading-none !py-0 !px-1 rounded-none border focus-visible:ring-[1px] ">
+                          <SelectValue placeholder="" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">Item</SelectItem>
+                          <SelectItem value="2">Service</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {type !== 4 && (
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm">Receipt Date</span>
+                      </div>
+                      <div className="grid col-span-2 justify-items-end">
+                        {/* <Input
+                        noPadding
+                        className="w-full"
+                        type="date"
+                        disabled
+                        value={
+                          type === 1
+                            ? new Date().toLocaleDateString("en-CA")
+                            : data1.doc_date
+                        }
+                        readOnly={type !== 1}
+                      /> */}
+                        <Input
+                          noPadding
+                          className="w-full"
+                          type="date"
+                          onChange={(e) => {
+                            const invoiceDate = new Date(e.target.value);
+                            let newDate = "";
+                            if (data.cid !== 0) {
+                              const result = new Date(invoiceDate);
+                              //   let cust = customer.find(
+                              //   (item) => Number(c) === item.id,
+                              // );
+                              const cust = customer.find(
+                                (item: any) =>
+                                  String(item.id) === String(data.cid),
+                              )?.terms;
+                              result.setDate(result.getDate() + (cust || 0));
+
+                              newDate = result.toLocaleDateString("en-CA");
+                            } else {
+                              newDate = invoiceDate.toLocaleDateString("en-CA");
+                            }
+
+                            setData({
+                              ...data,
+                              receipt_date: e.target.value,
+                              due_date: newDate,
+                            });
+                            setData1({
+                              ...data1,
+                              receipt_date: e.target.value,
+                              due_date: newDate,
+                            });
+                          }}
+                          value={
+                            type === 1 || type === 4
+                              ? data.receipt_date
+                              : data1.receipt_date
+                          }
+                          readOnly={type === 2}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* <div className="my-4 shadow pt-1"> */}
+                <div className="max-h-44 overflow-y-auto py-0 shadow">
+                  {docType === 2 ? (
+                    <>
+                      <table className="w-full">
+                        <thead className="bg-blue-300 sticky top-0 z-10">
+                          <tr>
+                            <th className="p-1 border">Description</th>
+                            <th className="p-1 border">Account</th>
+                            <th className="p-1 border">Customer</th>
+                            <th className="p-1 border">Vatable</th>
+                            <th className="p-1 border">WTax</th>
+                            <th className="p-1 border">Discount</th>
+                            <th className="p-1 border">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="">
+                          {type === 1 || type === 4
+                            ? rows.map((item, index) => (
+                                <tr key={index}>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none"
+                                      value={item.description}
+                                      onChange={(e) => {
+                                        const newRows = [...rows];
+                                        newRows[index].description =
+                                          e.target.value;
+                                        if (
+                                          e.target.value !== "" &&
+                                          newRows[index].account === ""
+                                        ) {
+                                          newRows[index].account =
+                                            String(incomeAcc);
+                                        }
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                    />
+                                    {/* {Number(
+                                      round2(
+                                        Number(item.amount.replace(/,/g, "")) /
+                                          1.12,
+                                      ),
+                                    )} */}
+                                    {/* {round2(
+                                      Number(
+                                        Number(
+                                          Number(
+                                            item.amount.replace(/,/g, ""),
+                                          ) / 1.12,
+                                        ).toFixed(3),
+                                      ),
+                                    )} */}
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch1
+                                      options={accounts}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rows];
+                                        newRows[index].account = e;
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        accountsAll.find(
+                                          (item2) =>
+                                            item.account === String(item2.id),
+                                        )?.name
+                                      }
+                                      id={String(item.account)}
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch
+                                      options={customer.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rows];
+                                        newRows[index].customer = e;
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        customer.find(
+                                          (item2) =>
+                                            item.customer === String(item2.id),
+                                        )?.name
+                                      }
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      onChange={(e) => {
+                                        const newRows = [...rows];
+                                        newRows[index].vatable = e.target.value;
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      value={item.vatable}
+                                    >
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      onChange={(e) => {
+                                        const newRows = [...rows];
+                                        newRows[index].wtax = e.target.value;
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      value={item.wtax}
+                                    >
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      // value={round2(
+                                      //   Number(item.amount.replace(/,/g, "")) /
+                                      //     1.12,
+                                      // )}
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.discount
+                                          : Number(item.discount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.discount))
+                                      }
+                                      onChange={(e) => {
+                                        let value = e.target.value.replace(
+                                          /,/g,
+                                          "",
+                                        ); // remove commas for validation
+
+                                        if (!/^\d*\.?\d{0,2}$/.test(value))
+                                          return;
+
+                                        let amt =
+                                          item.vatable === "1"
+                                            ? Number(
+                                                item.amount.replace(/,/g, ""),
+                                              ) / 1.12
+                                            : Number(
+                                                item.amount.replace(/,/g, ""),
+                                              );
+
+                                        const num = parseFloat(value);
+
+                                        // block values greater than max
+                                        if (!isNaN(num) && num > amt) return;
+
+                                        // Allow only numbers and up to 2 decimals
+                                        // if (/^-?\d*\.?\d{0,2}$/.test(value)) {
+                                        const newRows = [...rows];
+                                        newRows[index].discount = value;
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                        // }
+                                      }}
+                                      onBlur={() => {
+                                        const newRows = [...rows];
+                                        const num = parseFloat(item.discount);
+
+                                        if (!isNaN(num)) {
+                                          // Format with commas and 2 decimals
+                                          newRows[index].discount =
+                                            num.toLocaleString("en-US", {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            });
+                                        } else {
+                                          newRows[index].discount = "";
+                                        }
+
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      onFocus={(e) => {
+                                        // remove formatting while editing
+                                        const newRows = [...rows];
+                                        newRows[index].discount =
+                                          item.discount.replace(/,/g, "");
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      // value={
+                                      //   item.vatable === "1"
+                                      //     ? round2(
+                                      //         parseFloat(
+                                      //           item.amount.replace(/,/g, ""),
+                                      //         ) / 1.12,
+                                      //       )
+                                      //     : item.amount
+                                      // }
+                                      disabled={item.amount === ""}
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.amount
+                                          : Number(item.amount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.amount))
+                                      }
+                                      onChange={(e) => {
+                                        let value = e.target.value.replace(
+                                          /,/g,
+                                          "",
+                                        );
+
+                                        if (/^-?\d*\.?\d{0,2}$/.test(value)) {
+                                          const newRows = [...rows];
+                                          newRows[index] = {
+                                            ...newRows[index],
+                                            amount: value,
+                                          };
+
+                                          setRows(newRows);
+                                          setRows1(newRows);
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const newRows = [...rows];
+                                        const num = parseFloat(item.amount);
+
+                                        if (!isNaN(num)) {
+                                          // Format with commas and 2 decimals
+                                          newRows[index].amount =
+                                            num.toLocaleString("en-US", {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            });
+                                        } else {
+                                          newRows[index].amount = "";
+                                        }
+
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      onFocus={(e) => {
+                                        // remove formatting while editing
+                                        const newRows = [...rows];
+                                        newRows[index].amount =
+                                          e.target.value.replace(/,/g, "");
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                    />
+                                  </td>
+                                </tr>
+                              ))
+                            : rows1.map((item, index) => (
+                                <tr key={index}>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none"
+                                      value={item.description}
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch1
+                                      options={accounts}
+                                      placeholder=""
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        accountsAll.find(
+                                          (item2) =>
+                                            item.account === String(item2.id),
+                                        )?.name
+                                      }
+                                      id={String(item.account)}
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch
+                                      options={customer.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        customer.find(
+                                          (item2) =>
+                                            item.customer === String(item2.id),
+                                        )?.name
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      value={item.vatable}
+                                      disabled
+                                    >
+                                      <option value={0}></option>
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      value={item.wtax}
+                                      disabled
+                                    >
+                                      <option value={0}></option>
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.discount
+                                          : Number(item.discount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.discount))
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.amount
+                                          : Number(item.amount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.amount))
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                        </tbody>
+                      </table>
+                      {type === 1 && (
+                        <div className="py-2 flex justify-end w-full">
+                          <Button
+                            size={"sm"}
+                            variant={"primary"}
+                            onClick={addRow}
+                          >
+                            Add Row
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <table className="w-full">
+                        <thead className="bg-blue-300 sticky top-0 z-10">
+                          <tr>
+                            <th className="p-1 border">Product</th>
+                            <th className="p-1 border">Account</th>
+                            <th className="p-1 border">Customer</th>
+                            <th className="p-1 border">Vatable</th>
+                            <th className="p-1 border">WTax</th>
+                            <th className="p-1 border">Price</th>
+                            <th className="p-1 border">Disc.</th>
+                            <th className="p-1 border">Qty.</th>
+                            <th className="p-1 border">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="">
+                          {type === 1 || type === 4
+                            ? rowsI.map((item, index) => (
+                                <tr key={index}>
+                                  <td className="p-1 border">
+                                    <SelectWithSearch
+                                      options={items.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const selectItem = items.find(
+                                          (item3) =>
+                                            String(item3.id) === String(e),
+                                        );
+                                        const newRows = [...rowsI];
+                                        newRows[index].product = e;
+                                        if (selectItem) {
+                                          newRows[index].price =
+                                            selectItem.p_sales;
+                                          newRows[index].income =
+                                            selectItem.p_income;
+                                          newRows[index].qty = "";
+                                          newRows[index].amount = "";
+                                        }
+
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        items.find(
+                                          (item2) =>
+                                            String(item.product) ===
+                                            String(item2.id),
+                                        )?.name
+                                      }
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch1
+                                      options={accounts}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].income = e;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        accountsAll.find(
+                                          (item2) =>
+                                            item.income === String(item2.id),
+                                        )?.name
+                                      }
+                                      id={String(item.income)}
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch
+                                      options={customer.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].customer = e;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        customer.find(
+                                          (item2) =>
+                                            item.customer === String(item2.id),
+                                        )?.name
+                                      }
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].vatable = e.target.value;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      value={item.vatable}
+                                    >
+                                      {/* {type === 2 && (
+                                        <option value={0}></option>
+                                      )} */}
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].wtax = e.target.value;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      value={item.wtax}
+                                    >
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border w-20">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        item.price === ""
+                                          ? ""
+                                          : formatMoney(item.price)
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.discount
+                                          : Number(item.discount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.discount))
+                                      }
+                                      onChange={(e) => {
+                                        let value = e.target.value.replace(
+                                          /,/g,
+                                          "",
+                                        ); // remove commas for validation
+
+                                        if (!/^\d*\.?\d{0,2}$/.test(value))
+                                          return;
+
+                                        let amt =
+                                          item.vatable === "1"
+                                            ? Number(
+                                                item.amount.replace(/,/g, ""),
+                                              ) / 1.12
+                                            : Number(
+                                                item.amount.replace(/,/g, ""),
+                                              );
+
+                                        const num = parseFloat(value);
+
+                                        // block values greater than max
+                                        if (!isNaN(num) && num > amt) return;
+
+                                        // Allow only numbers and up to 2 decimals
+                                        // if (/^-?\d*\.?\d{0,2}$/.test(value)) {
+                                        const newRows = [...rowsI];
+                                        newRows[index].discount = value;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                        // }
+                                      }}
+                                      onBlur={() => {
+                                        const newRows = [...rowsI];
+                                        const num = parseFloat(item.discount);
+
+                                        if (!isNaN(num)) {
+                                          // Format with commas and 2 decimals
+                                          newRows[index].discount =
+                                            num.toLocaleString("en-US", {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            });
+                                        } else {
+                                          newRows[index].discount = "";
+                                        }
+
+                                        setRowsI(newRows);
+                                      }}
+                                      onFocus={(e) => {
+                                        // remove formatting while editing
+                                        const newRows = [...rowsI];
+                                        newRows[index].discount =
+                                          item.discount.replace(/,/g, "");
+                                        setRowsI(newRows);
+                                      }}
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.qty
+                                          : Number(item.qty) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.qty))
+                                      }
+                                      onChange={(e) => {
+                                        let value = e.target.value.replace(
+                                          /,/g,
+                                          "",
+                                        );
+                                        if (/^-?\d*\.?\d{0,2}$/.test(value)) {
+                                          const newRows = [...rowsI];
+                                          newRows[index] = {
+                                            ...newRows[index],
+                                            qty: value,
+                                          };
+                                          newRows[index].amount = String(
+                                            parseFloat(value) *
+                                              parseFloat(newRows[index].price),
+                                          );
+
+                                          // setRowsI(newRows);
+
+                                          // newRows[index].qty = String(value);
+                                          // newRows[index].amount = String(
+                                          //   parseFloat(value) *
+                                          //     parseFloat(newRows[index].price),
+                                          // );
+                                          setRowsI(newRows);
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        const newRows = [...rows];
+                                        const num = parseFloat(item.qty);
+
+                                        if (!isNaN(num)) {
+                                          // Format with commas and 2 decimals
+                                          newRows[index].qty =
+                                            num.toLocaleString("en-US", {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            });
+                                        } else {
+                                          newRows[index].qty = "";
+                                        }
+
+                                        setRows(newRows);
+                                        setRows1(newRows);
+                                      }}
+                                      // onFocus={(e) => {
+                                      //   // remove formatting while editing
+                                      //   const newRows = [...rows];
+                                      //   newRows[index].qty = item.qty.replace(
+                                      //     /,/g,
+                                      //     "",
+                                      //   );
+                                      //   setRows(newRows);
+                                      //   setRows1(newRows);
+                                      // }}
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        (type === 1 || type === 4) &&
+                                        Number(item.amount) !== 0
+                                          ? formatMoney(Number(item.amount))
+                                          : Number(item.amount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.amount))
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                </tr>
+                              ))
+                            : rows1.map((item, index) => (
+                                <tr key={index}>
+                                  <td className="p-1 border">
+                                    <SelectWithSearch
+                                      options={items.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        items.find(
+                                          (item2) =>
+                                            String(item.product) ===
+                                            String(item2.id),
+                                        )?.name
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch1
+                                      options={accounts}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].income = e;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        accountsAll.find(
+                                          (item2) =>
+                                            item.income === String(item2.id),
+                                        )?.name
+                                      }
+                                      id={String(item.income)}
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-0 border">
+                                    <SelectWithSearch
+                                      options={customer.map((item1) => ({
+                                        label: String(item1.id),
+                                        value: item1.name,
+                                      }))}
+                                      placeholder=""
+                                      onChange={(e) => {
+                                        const newRows = [...rowsI];
+                                        newRows[index].customer = e;
+                                        setRowsI(newRows);
+                                        // setRows1(newRows);
+                                      }}
+                                      className="w-36 border-none"
+                                      noPadding1
+                                      value={
+                                        customer.find(
+                                          (item2) =>
+                                            item.customer === String(item2.id),
+                                        )?.name
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      value={item.vatable}
+                                      disabled
+                                    >
+                                      <option value={0}></option>
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border">
+                                    <select
+                                      className="outline-none text-sm appearance-none w-full text-center"
+                                      value={item.wtax}
+                                      disabled
+                                    >
+                                      <option value={0}></option>
+                                      <option value={1}>Yes</option>
+                                      <option value={2}>No</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-1 border w-20">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        item.amount === ""
+                                          ? ""
+                                          : formatMoney(item.price)
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        type === 1 || type === 4
+                                          ? item.discount
+                                          : Number(item.discount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.discount))
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={item.qty}
+                                      readOnly
+                                    />
+                                  </td>
+                                  <td className="p-1 border">
+                                    <input
+                                      className="w-full outline-none text-right"
+                                      value={
+                                        (type === 1 || type === 4) &&
+                                        Number(item.amount) !== 0
+                                          ? formatMoney(Number(item.amount))
+                                          : Number(item.amount) === 0
+                                            ? ``
+                                            : formatMoney(Number(item.amount))
+                                      }
+                                      readOnly
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
+                        </tbody>
+                      </table>
+                      {type === 1 && (
+                        <div className="py-2 flex justify-end w-full">
+                          <Button
+                            size={"sm"}
+                            variant={"primary"}
+                            onClick={addRowI}
+                          >
+                            Add Row
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                {/* </div> */}
+                <div className="grid grid-cols-2 py-4">
+                  <div className="flex flex-col">
+                    <span className="text-sm ">Remarks</span>
+                    <Textarea
+                      className="w-full h-24 resize-none rounded-none"
+                      onChange={(e) => {
+                        setData({ ...data, remarks: e.target.value });
+                        setData1({ ...data1, remarks: e.target.value });
+                      }}
+                      value={
+                        type === 3
+                          ? `${
+                              data1.remarks === "" ? "" : data1.remarks + " "
+                            }Cancellation of Invoice No. ${data1.invoice}.`
+                          : type === 1 || type === 4
+                            ? data.remarks
+                            : data1.remarks
+                      }
+                      readOnly={type === 2 || type === 3}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm">Total Before Discount</span>
+                      </div>
+                      <div className="flex col-span-2 justify-items-end gap-2">
+                        <Input
+                          noPadding
+                          className="w-full text-right"
+                          type="text"
+                          readOnly
+                          value={
+                            type === 1 || type === 4
+                              ? formatMoney(totalBefDiscountAmt)
+                              : formatMoney(Number(data1.pricebefvat))
+                          }
+                          // value={totalBefDiscountAmt}
+                        />{" "}
+                        {type === 2 && <HandCoins className="invisible" />}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm">Discount</span>
+                      </div>
+                      <div className="flex col-span-2 justify-items-end gap-2">
+                        <Input
+                          noPadding
+                          className="w-full text-right"
+                          type="text"
+                          readOnly
+                          value={
+                            type === 1 || type === 4
+                              ? formatMoney(discountAmt)
+                              : formatMoney(Number(data1.discount))
+                          }
+                        />{" "}
+                        {type === 2 && <HandCoins className="invisible" />}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm">VAT</span>
+                      </div>
+                      <div className="flex col-span-2 justify-items-end gap-2">
+                        <Input
+                          noPadding
+                          className="w-full text-right"
+                          type="text"
+                          readOnly
+                          value={
+                            type === 1 || type === 4
+                              ? formatMoney(vatAmt)
+                              : formatMoney(Number(data1.vat))
+                          }
+                        />{" "}
+                        {type === 2 && <HandCoins className="invisible" />}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm flex items-center justify-between">
+                          WTax{" "}
+                          <Wtax
+                            wtax={type === 4 ? wtax1 : wtax}
+                            setWtax={type === 4 ? setWtax1 : setWtax}
+                            taxableAmt={type === 4 ? taxableAmt1 : taxableAmt}
+                            wtaxOpt={wtaxOpt}
+                            type={type}
+                            // setTotalWTax={setTotalWTax}
+                          />
+                        </span>
+                      </div>
+                      <div className="flex col-span-2 justify-items-end gap-2">
+                        <Input
+                          noPadding
+                          className="w-full text-right"
+                          type="text"
+                          readOnly
+                          value={
+                            type === 1
+                              ? formatMoney(wTaxAmt)
+                              : type === 4
+                                ? formatMoney(wTaxAmt1)
+                                : formatMoney(Number(data1.wtax))
+                          }
+                        />{" "}
+                        {type === 2 && <HandCoins className="invisible" />}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5">
+                      <div></div>
+                      <div className=" border-b col-span-2">
+                        <span className="text-sm">Total Amount</span>
+                      </div>
+                      <div className="flex col-span-2 justify-items-end gap-2">
+                        <Input
+                          noPadding
+                          className="w-full text-right"
+                          type="text"
+                          readOnly
+                          value={
+                            type === 1 || type === 4
+                              ? formatMoney(
+                                  totalBefDiscountAmt + vatAmt - discountAmt,
+                                )
+                              : formatMoney(Number(data1.total))
+                          }
+                        />{" "}
+                        {type === 2 && <HandCoins fill="yellow" />}
+                      </div>
+                    </div>
+
+                    {type === 2 && (
+                      <>
+                        <div className="grid grid-cols-5">
+                          <div></div>
+                          <div className=" border-b col-span-2">
+                            <span className="text-sm">Applied Amount</span>
+                          </div>
+                          <div className="flex col-span-2 justify-items-end gap-2">
+                            <Input
+                              noPadding
+                              className="w-full text-right"
+                              type="text"
+                              readOnly
+                              value={formatMoney(data1.appliedAmount ?? 0)}
+                            />{" "}
+                            {type === 2 && <HandCoins className="invisible" />}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-5">
+                          <div></div>
+                          <div className=" border-b col-span-2">
+                            <span className="text-sm">Balance Due</span>
+                          </div>
+                          <div className="flex col-span-2 justify-items-end gap-2">
+                            <Input
+                              noPadding
+                              className="w-full text-right"
+                              type="text"
+                              readOnly
+                              value={formatMoney(
+                                data1.total - (data1.appliedAmount ?? 0),
+                              )}
+                            />{" "}
+                            {type === 2 && <HandCoins className="invisible" />}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ContextMenuTrigger>
+            {/* Context Menu Items */}
+            <ContextMenuContent>
+              <ContextMenuItem
+                onClick={() => setOpenEntry(true)}
+                disabled={
+                  type === 1 ||
+                  getInvPrev?.data?.data?.status === 5 ||
+                  getInvPrev?.data?.data?.status === 6
+                }
+              >
+                Journal Entry
+              </ContextMenuItem>
+              {/* <ContextMenuItem
+                        onClick={() => alert(`Update: ${item.id}`)}
+                      >
+                        Update
+                      </ContextMenuItem> */}
+
+              <ContextMenuItem
+                className="text-red-600"
+                onClick={() => {
+                  setOpenCancel(true);
+                  setViewInvoice(0);
+                }}
+                disabled={data.status !== 1}
+              >
+                Cancel
+              </ContextMenuItem>
+            </ContextMenuContent>
+          </ContextMenu>
+
+          <hr className="mb-5" />
+
+          <div className="flex justify-between">
+            <div>
+              {hasAccess(access, "19", "create") && (
+                <div>
+                  {data1.status > 0 &&
+                    data1.status <= 2 &&
+                    type === 2 &&
+                    docType !== 1 && (
+                      // <Button
+                      //   size="sm"
+                      //   variant="second"
+                      //   onClick={() => {
+                      //     console.log("Data: ", data);
+                      //     console.log("Data1: ", data1);
+                      //     setOpenAdd(true);
+                      //     setType(4);
+                      //     setData({ ...data, remarks: "" });
+                      //     setData1({ ...data1, remarks: "" });
+
+                      //     setOldRows(cleared);
+                      //     setRows(cleared);
+                      //     setRows1(cleared);
+                      //     // setRows(initialRows);
+                      //     // setRowsI(initialRows);
+                      //     // setRows1(initialRows);
+
+                      //     console.log("Rows here: ", oldRows);
+                      //     // setRows(oldRows);
+                      //     // setRows1(oldRows);
+
+                      //     // setOldRows((prevRows) =>
+                      //     //   prevRows.map((old) => ({
+                      //     //     ...old,
+                      //     //     amount: "",
+                      //     //     discount: "",
+                      //     //   })),
+                      //     // );
+
+                      //     // setTimeout(() => {
+                      //     //   console.log("Old Rows: ", oldRows);
+                      //     //   // setRows(oldRows);
+                      //     // }, 1000);
+
+                      //     // setTimeout(() => {
+                      //     //   if (Number(data1.vatable) === 1) {
+                      //     //     setRows((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "1",
+                      //     //         description: row.description,
+                      //     //       })),
+                      //     //     );
+                      //     //     setRowsI((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "1",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRows1((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "1",
+                      //     //       })),
+                      //     //     );
+                      //     //   } else {
+                      //     //     setRows((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRowsI((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRows1((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         vatable: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //   }
+
+                      //     //   if (Number(data1.taxable) === 1) {
+                      //     //     setRows((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "1",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRowsI((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "1",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRows1((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "1",
+                      //     //       })),
+                      //     //     );
+                      //     //   } else {
+                      //     //     setRows((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRowsI((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //     setRows1((prevRows) =>
+                      //     //       prevRows.map((row) => ({
+                      //     //         ...row,
+                      //     //         wtax: "2",
+                      //     //       })),
+                      //     //     );
+                      //     //   }
+                      //     // }, 200);
+
+                      //     // console.log("Rows: ", rows);
+                      //     // console.log("RowsI: ", rowsI);
+                      //     // console.log("Data: ", data);
+                      //     // setRows(rowsI);
+                      //     // setViewInvoice(currId);
+                      //     // setData({ ...data, remarks: "" });
+                      //     // setRows(initialRows);
+                      //     // setRowsI(initialRows);
+                      //     // setWtax(initialWtax);
+                      //     // setWtax((prev) =>
+                      //     //   prev.map((item) => ({
+                      //     //     ...item,
+                      //     //     tax_amt: 0,
+                      //     //     wtax_amt: 0,
+                      //     //   })),
+                      //     // );
+                      //   }}
+                      // >
+                      //   Add Credit Memo
+                      // </Button>
+
+                      <Button
+                        size="sm"
+                        variant="second"
+                        onClick={() => {
+                          setOpenAddC(true);
+                          // setOpenAdd(false);
+                        }}
+                      >
+                        Add Credit Memo
+                      </Button>
+                    )}
+                </div>
+              )}
+            </div>
+
+            {openAddC && (
+              <CreditMemoModal
+                openAdd={openAddC}
+                setOpenAdd={setOpenAddC}
+                data={data1}
+                data1={oldRows}
+                invoiceNoC={invoiceNoCM}
+                docType={docType}
+              />
+            )}
+
+            <div className="flex gap-4">
+              <Button
+                size="sm"
+                variant="second"
+                onClick={() => {
+                  setOpenAdd(false);
+                  setRows(initialRows);
+                  // setData(initialData);
+                  // reset();
+                  // resetWtax();
+                  // resetData();
+                  setOpenCancel(false);
+                  setViewInvoice(0);
+                }}
+              >
+                Close
+              </Button>
+
+              {(type === 1 || type === 4 || type === 3) && (
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    setAddLoading(true);
+                    submitInvoice();
+                  }}
+                  disabled={addLoading}
+                >
+                  {addLoading ? (
+                    <>
+                      <Spinner />
+                      &nbsp;
+                    </>
+                  ) : (
+                    `Add`
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </CustomDialog>
+      )}
+
+      {openEntry && (
+        <CustomDialog
+          close={setOpenEntry}
+          title={``}
+          width={`!w-[60vw]`}
+          height={``}
+          closeIcon={`N`}
+          button=""
+        >
+          <ViewEntry id={currId} origin={2} />
+
+          <hr className="pb-5" />
+          <div className="flex justify-end gap-4">
+            <Button
+              size="sm"
+              variant="second"
+              onClick={() => setOpenEntry(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </CustomDialog>
+      )}
+
+      {openCancel && (
+        <CustomDialog
+          close={setOpenCancel}
+          title=""
+          width="!w-[30vw]"
+          height=""
+          closeIcon="N"
+          button=""
+        >
+          <div className="flex flex-col gap-4">
+            <div className="text-lg text-center">
+              Are you sure you want to cancel this invoice{" "}
+              {invoices.find((item) => currId === item.id)?.no}?
+            </div>
+            <div className="w-full flex">
+              <div className="w-1/2 text-center">
+                <Button
+                  className="w-5/6"
+                  variant="destructive"
+                  onClick={(e) => {
+                    //   e.stopPropagation();
+                    //   handleClose(e);
+                    //   funct();
+                    // alert("Wuhuuuuu");
+                    setOpenAdd(true);
+                    setType(3);
+                    setViewInvoice(currId);
+                    setOpenCancel(false);
+                  }}
+                >
+                  Yes
+                </Button>
+              </div>
+
+              <div className="w-1/2 text-center">
+                <Button
+                  className="w-5/6"
+                  variant="primary"
+                  onClick={() => {
+                    setOpenCancel(false);
+                    setData(initialData);
+                  }}
+                >
+                  No
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CustomDialog>
+      )}
+
+      {openAgingClient && (
+        <ARAgingAll
+          setOpenAgingClient={setOpenAgingClient}
+          data={getAgingClient?.data?.data}
+          setActiveClient={setActiveClient}
+          setActiveClientN={setActiveClientN}
+          setOpenAgingInvoices={setOpenAgingInvoices}
+        />
+      )}
+
+      {openAgingInvoices && (
+        <CustomDialog
+          close={setOpenAgingInvoices}
+          title=""
+          width="!w-[50vw]"
+          height=""
+          closeIcon="Y"
+          button=""
+          escape="N"
+        >
+          <div className="flex flex-col gap-4 ">
+            <div>
+              <span className="font-medium text-xl">{activeClientN}</span>
+            </div>
+            <div className="max-h-[500px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-200 hover:bg-gray-200 ">
+                    <TableHead className="">Invoice No</TableHead>
+                    <TableHead className="text-center">Posting Date</TableHead>
+                    <TableHead className="text-center">Receipt Date</TableHead>
+                    <TableHead className="text-center">Aging (days)</TableHead>
+                    <TableHead className="text-right">Balance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {getAgingInvoices?.data?.data.map((a: any, b: number) => (
+                    <TableRow key={b}>
+                      <TableCell>{a?.invoice_num}</TableCell>
+                      <TableCell className="text-center">
+                        {a?.posting_date}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {a?.receipt_date}
+                      </TableCell>
+                      <TableCell className="text-center">{a?.days}</TableCell>
+                      <TableCell className="text-right">
+                        {a?.balance === 0 ? `-` : formatMoney(a?.balance)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CustomDialog>
+      )}
+    </>
+  );
+}
+
+export default ARInvoice;

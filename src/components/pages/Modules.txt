@@ -1,0 +1,30 @@
+ID  Module              Sub module
+29	Approval	        Approval
+28	Inventory	        Inventory
+27	Business Partner	Business Partner
+26	Banking	            Bank Reconciliation
+25	Banking	            Outgoing Payment
+24	Banking	            Incoming Payment
+23	Purchasing - A/P	Recurring Transactions
+22	Purchasing - A/P	A/P Credit Memo
+21	Purchasing - A/P	A/P Invoice
+20	Sales - A/R	        Recurring Transactions
+19	Sales - A/R	        A/R Credit Memo
+18	Sales - A/R	        A/R Invoice
+17	Financials	        Journal Report
+16	Financials	        Journal Entry
+15	Financials	        Chart of Accounts
+14	Administration	    A/R Payment Terms
+13	Administration	    Banks Setup
+12	Administration	    Document Number
+11	Administration	    Posting Periods
+10	Administration	    Automatic Entries
+9	Administration	    Approval Process
+8	Administration	    Users
+7	Reports	            Projection
+6	Reports	            Financial Performance
+5	Reports	            General Ledger
+4	Reports	            Cash Flow
+3	Reports	            Profit & Loss
+2	Reports	            Balance Sheet
+1	Dashboard	        Dashboard
